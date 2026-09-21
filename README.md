@@ -2,7 +2,7 @@ NWEQ JMA Live
 
 NWEQ JMA Live displays Japanese earthquake information and Level 5 special warnings as transparent broadcast-style overlays in OBS Studio.
 
-The receiver polls the public [Japan Meteorological Agency disaster-information XML feeds](https://www.data.jma.go.jp/developer/xml/feed/) and serves two local browser-source pages. No OBS plugin installation is required.
+The browser-source pages read the public [Japan Meteorological Agency disaster-information XML feeds](https://www.data.jma.go.jp/developer/xml/feed/) directly. No OBS plugin installation or local server is required.
 
 ## Features
 
@@ -11,29 +11,26 @@ The receiver polls the public [Japan Meteorological Agency disaster-information 
 - Transparent 1920 × 1080 OBS overlays
 - NWEQ broadcast-style Japanese typography
 - Alert sound when a new matching bulletin arrives
-- Local-only web server at `127.0.0.1:8765`
 - No changes to existing OBS scenes or configuration
 
 ## Requirements
 
 - Windows 10 or Windows 11
 - OBS Studio with Browser Source support
-- PowerShell 5.1 or later
 - An internet connection for receiving JMA bulletins
 
 ## Installation
 
 1. Download and extract the complete package.
-2. Double-click `START-NWEQ-JMA.cmd`.
-3. Keep the NWEQ receiver window open while using the overlays.
-4. In OBS, add a **Browser** source for each overlay you want.
+2. In OBS, add a **Browser** source for each overlay you want.
+3. Enable **Local file** and choose the matching HTML file.
 
 Use these browser-source settings:
 
-| Overlay | URL | Width | Height |
+| Overlay | Local file | Width | Height |
 | --- | --- | ---: | ---: |
-| Earthquake information | `http://127.0.0.1:8765/earthquake` | 1920 | 1080 |
-| Level 5 special warning | `http://127.0.0.1:8765/level5` | 1920 | 1080 |
+| Earthquake information | `earthquake.html` | 1920 | 1080 |
+| Level 5 special warning | `level5.html` | 1920 | 1080 |
 
 Enable **Control audio via OBS** if you want the alert sound on a separate OBS Audio Mixer channel.
 
@@ -41,12 +38,11 @@ Enable **Control audio via OBS** if you want the alert sound on a separate OBS A
 
 The included sound is `alert.wav`. To replace it:
 
-1. Stop the NWEQ receiver.
-2. Replace `alert.wav` with another short WAV file.
-3. Keep the filename exactly `alert.wav`.
-4. Restart `START-NWEQ-JMA.cmd` and refresh the OBS Browser sources.
+1. Replace `alert.wav` with another short WAV file.
+2. Keep the filename exactly `alert.wav`.
+3. Refresh the OBS Browser sources.
 
-The sound plays only when a new matching bulletin arrives after the receiver starts. Previously published bulletins do not trigger the sound on startup.
+The sound plays only when a new matching bulletin arrives after the browser source starts. The bulletin already displayed at startup does not trigger the sound.
 
 ## Supported information
 
@@ -66,32 +62,40 @@ JMA does not publish general editorial breaking news such as political, criminal
 
 ## How it works
 
-`jma-server.ps1` polls these public Atom feeds every 30 seconds:
+Each browser page polls its matching public Atom feed every 60 seconds:
 
 - `https://www.data.jma.go.jp/developer/xml/feed/eqvol.xml`
 - `https://www.data.jma.go.jp/developer/xml/feed/extra.xml`
 
-It retrieves matching JMA XML bulletins, extracts the fields needed by the overlays, and serves the resulting state locally. The local server does not accept connections from other computers.
+Each page downloads its Atom feed directly from JMA, follows the matching bulletin's XML link, and extracts the fields needed by the overlay. Nothing is installed as a Windows service and no local port is opened.
+
+## First-run check
+
+The live pages are intentionally fully transparent after startup. They remember the newest retained feed item without displaying it. A telop and sound are triggered only when a different, newly received matching bulletin appears.
+
+Use `earthquake-test.html` and `level5-test.html` to check positioning, scaling, and transparency in OBS without waiting for a real alert. These test pages use clearly marked sample data.
 
 ## Troubleshooting
 
 ### OBS shows a blank page
 
-- Confirm that `START-NWEQ-JMA.cmd` is still running.
-- Confirm that the Browser source URL begins with `http://127.0.0.1:8765/`.
+- Confirm that **Local file** is enabled and the correct HTML file is selected.
+- Set the source dimensions to **1920 × 1080**.
+- Confirm that the computer can open the JMA feed URLs listed above.
 - Refresh the Browser source cache in OBS.
-- Make sure another application is not already using port `8765`.
 
 ### No alert is visible
 
-The live pages wait for a matching JMA bulletin. If no current matching bulletin exists, the page remains in its waiting state.
+An empty live source is normal while no new matching bulletin is received. Use the included test pages to verify the visual layout.
 
 ### No sound is heard
 
 - Enable **Control audio via OBS** in the Browser source properties.
 - Check that the source is visible in the OBS Audio Mixer.
-- Confirm that `alert.wav` exists beside `jma-server.ps1`.
+- Confirm that `alert.wav` is in the same folder as `earthquake.html` and `level5.html`.
 - Check the source's mixer volume and monitoring settings.
+
+The initial bulletin does not play sound. This prevents an old retained feed item from sounding like a newly issued alert whenever OBS starts.
 
 ## Data source and limitations
 
@@ -100,3 +104,4 @@ Weather and earthquake data is provided by the Japan Meteorological Agency. Revi
 JMA notes that its public pull service may stop or be delayed during maintenance or other disruptions. It is not a guaranteed emergency-delivery service. Always confirm critical information through official emergency channels.
 
 NWEQ JMA Live is an independent display tool and is not affiliated with or endorsed by the Japan Meteorological Agency or NHK.
+
